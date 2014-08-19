@@ -122,7 +122,6 @@ account required pam_sss.so
 LoadModule authnz_pam_module modules/mod_authnz_pam.so
 LoadModule intercept_form_submit_module modules/mod_intercept_form_submit.so
 LoadModule lookup_identity_module modules/mod_lookup_identity.so
-LoadModule authn_anon_module modules/mod_authn_anon.so
 
 <Location /dashboard/authenticate>
   InterceptFormPAMService httpd-auth
@@ -142,23 +141,25 @@ LoadModule authn_anon_module modules/mod_authn_anon.so
 </Location>
 
 <LocationMatch ^/api|^/vmdbws/wsdl|^/vmdbws/api>
+  SetEnvIf Authorization '^Basic +YWRtaW46' let_admin_in
+  SetEnvIf X-Auth-Token  '^.+$'             let_api_token_in
+
   AuthType Basic
   AuthName "External Authentication (httpd) for API"
-  AuthBasicProvider anon PAM
+  AuthBasicProvider PAM
 
   AuthPAMService httpd-auth
   Require valid-user
-
-  Anonymous_NoUserID      off
-  Anonymous_MustGiveEmail off
-  Anonymous_VerifyEmail   off
-  Anonymous_LogEmail      off
-  Anonymous               admin
+  Order Allow,Deny
+  Allow from env=let_admin_in
+  Allow from env=let_api_token_in
+  Satisfy Any
 
   LookupUserAttr   mail        REMOTE_USER_EMAIL
   LookupUserAttr   givenname   REMOTE_USER_FIRSTNAME
   LookupUserAttr   sn          REMOTE_USER_LASTNAME
   LookupUserAttr   displayname REMOTE_USER_FULLNAME
+
   LookupUserGroups             REMOTE_USER_GROUPS ":"
   LookupDbusTimeout            5000
 
